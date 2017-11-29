@@ -1,17 +1,61 @@
-window.addEventListener('load', init );
+window.addEventListener('load', begin );
 /*Funciones*/
+var perfectTech = 1800;
+var perfectHse = 1200;
 /*Total de estudiantes por sede y generacion*/
 function totalStudents(place, generation) {
  var totalStudents = data[place][generation].students.length;
  return totalStudents;
 };
-/*Función para obtener el total de puntos Tech por Sprint de cada alumna*/
-function totalPointsPerStudent(place, generation, curse, numberStudent) {
+
+/*Porcentaje de Deserción*/
+function numDesert(place, generation, totalAlumns) {
+  var desertion = 0;
+  for (var i=0; i < totalAlumns; i++) {
+   if (data[place][generation].students[i].active === false) {
+    desertion ++;
+   }
+  }
+  return desertion;
+};
+
+/*Función para obtener el total de puntos Tech y HSE de TODOS los sprints por cada alumna*/
+function totalPointsPerStudent(place, generation, numberStudent) {
   var totalPoints = 0;
   for ( var i = 0; i < data[place][generation].students[numberStudent].sprints.length; i++) {
       totalPoints += data[place][generation].students[numberStudent].sprints[i].score[curse];
     }
   return totalPoints;
+};
+/*Función para obtener el total de puntos Tech o HSE en UN sprint por cada alumna*/
+function pointsPerSpint(place, generation, curse, numberStudent) {
+  var totalPoints = 0;
+  for ( var i = 0; i < data[place][generation].students[numberStudent].sprints.length; i++) {
+      totalPoints += data[place][generation].students[numberStudent].sprints[i].score[curse];
+    }
+  return totalPoints;
+};
+
+/*funcion para obtener el numero de alumnas que superan el 70% en Tech*/
+function overGoal(place, generation, curse, numberStudent) {
+  var numOverGoal= 0;
+  for (var i=0; i < data[place][generation].students.length; i++) {
+    if(convertApercentage (totalPointsPerStudent(place, generation, curse, i), perfectTech)>= 70) {
+      numOverGoal++;
+    }
+  }
+  return numOverGoal;
+};
+
+/*funcion para obtener el numero de alumnas que superan el 70% en HSE*/
+function overGoal(place, generation, curse, numberStudent) {
+  var numOverGoal= 0;
+  for (var i=0; i < data[place][generation].students.length; i++) {
+    if(convertApercentage (totalPointsPerStudent(place, generation, curse, i), perfectHse)>= 70) {
+      numOverGoal++;
+    }
+  }
+  return numOverGoal;
 };
 
 /*Función para convertir a porcentaje por Todos los Sprints*/
@@ -27,11 +71,11 @@ function convertApercentage (points, maxScore) {
 };
 
 /*Cantidad de estudiantes que superan y que están debajo de la meta de puntos en promedio de todos los sprints cursados en HSE y en tech.*/
-function numberStudentsExceededAndBelowGoalPercentage () {
+function numberStudentsExceededAndBelowGoalPercentage (sede, generation) {
   var exceededGoal = 0;
   var belowGoal = 0;
-  for ( var i = 0; i < data['AQP']['2016-2'].students.length; i++) {
-    if ((convertApercentagePerAllSprints(totalPointsPerStudent('AQP', '2016-2', 'tech', i), 1800) + convertApercentagePerAllSprints(totalPointsPerStudent('AQP', '2016-2', 'hse', i), 1200)) / 2 >= 70) {
+  for ( var i = 0; i < data[sede][generation].students.length; i++) {
+    if ((convertApercentagePerAllSprints(totalPointsPerStudent(sede, generation, 'tech', i), perfectTech) + convertApercentagePerAllSprints(totalPointsPerStudent(sede, generation, 'hse', i), perfectHse)) / 2 >= 70) {
       exceededGoal ++ ;
     } else {
       belowGoal ++;
@@ -83,17 +127,100 @@ function averageTeachersOrJedis(place, generation, teacherOrJedi) {
   return Math.round(average / long);
 };
 
-/*Puntuación promedio de l@s jedi masters*/
-
+/*Crearemos una función que nos permita obtener las generaciones por sede*/
+var sedes = document.querySelector('.sedes');
+var sedesOptions = sedes.getElementsByTagName('option');
+var generations = document.querySelector('.generations');
+var sprints = document.getElementById('sprints');
 
 
 /*Ejecución del programa*/
-function init() {
+function begin() {
   console.log(data);
-  console.log(numberStudentsExceededAndBelowGoalPercentage());
-  console.log(convertApercentage(numberStudentsExceededAndBelowGoalPercentage(), totalStudents('AQP', '2016-2')));
-  console.log(npsAllSprints('AQP', '2016-2'));
-  console.log(satisfiedLaboratoria('AQP', '2016-2'));
-  console.log(averageTeachersOrJedis('AQP', '2016-2', 'teacher'));
-  console.log(averageTeachersOrJedis('AQP', '2016-2', 'jedi'));
+  /*mediante esta función cambiaremos el contenido segun boton*/
+  var addAndHide = function (event) {
+    var tabSeleccionado = event.target.dataset.tabSelect;
+    var overview = document.getElementById("overview");
+    var students = document.getElementById("students");
+    var teachers = document.getElementById("teachers");
+
+    if (tabSeleccionado === "tabOverview") {
+      students.style.display = "none";
+      teachers.style.display = "none";
+      overview.style.display = "block";
+    } else if (tabSeleccionado === "tabStudents") {
+      students.style.display = "block";
+      teachers.style.display = "none";
+      overview.style.display = "none";
+    } else if (tabSeleccionado === "tabTeachers") {
+      students.style.display = "none";
+      teachers.style.display = "block";
+      overview.style.display = "none";
+    }
+  }
+  /*En esta función obtenemos los botones y le agregamos un evento a cada uno mediante un for, el evento se desencadena mediante un click y permitira que aparezca el contenido solicitado*/
+  var changeArticle = function () {
+    var btns = document.getElementsByClassName("tab");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener("click", addAndHide);
+    }
+  }
+  changeArticle();
+
+
+
+  /*el evento onchange ocurre cuando el valor de un elemento <select> ha sido cambiado*/
+  sedes.onchange = function (event) {
+    genSelect(event.target.value);/*event.target.value obtiene el valor de la sede*/
+  };
+  /*Funcion para que al seleccionar una sede cambie las generaciones en base a cada sede*/
+  function genSelect(sede) {
+    var textSelect = document.getElementById('text-select');
+    var datagene = Object.keys(data[sede]);
+    generations.textContent = '';
+    generations.appendChild(textSelect);
+    for (var i = 0; i < datagene.length; i++) {
+      var option = document.createElement('option');
+      option.textContent= datagene[i];
+      generations.appendChild(option);
+    }
+    loadData(sede, datagene[i]);
+  }
+    /*  Funcion para agregar datos al HTML*/
+  function loadData(sede, generation) {
+    var optionGenerations = Object.keys(data[sede]);
+    generations.onchange = function (event) {
+      addDataForGeneration(event.target.value);
+    }
+
+    function addDataForGeneration(generationOption) {
+      /*Número de estudiantes que lograron alcanzar la meta en todos los sprints*/
+      var numExceedeGoal = document.getElementById('num-exceede-goal');
+      numExceedeGoal.textContent = numberStudentsExceededAndBelowGoalPercentage(sede, generationOption);
+      /*Número de estudiantes que lograron alcanzar la meta en todos los sprints*/
+      var percentageExceedeGoal = document.getElementById('percentage-exceede-goal');
+      percentageExceedeGoal.textContent = convertApercentage(numberStudentsExceededAndBelowGoalPercentage(sede, generationOption), totalStudents(sede, generationOption)) + ' %';
+      /*Promedio NPS*/
+      var nps = document.getElementById('nps');
+      nps.textContent = npsAllSprints(sede, generationOption);
+      /*Estudiantes satisfechas con la experiencia*/
+      var happy = document.getElementById('happy');
+      happy.textContent = satisfiedLaboratoria(sede, generationOption);
+      /*Promedio de los jedis*/
+      var jedi = document.getElementById('jedi');
+      jedi.textContent = averageTeachersOrJedis(sede, generationOption, 'jedi');
+      /*Promedio de los profesores*/
+      var teacher = document.getElementById('teacher');
+      teacher.textContent = averageTeachersOrJedis(sede, generationOption, 'teacher');
+      debugger
+      /*Total de estudiantes*/
+      var alumnsTotal = document.getElementById('alumns-total');
+      alumnsTotal.textContent = totalStudents(sede, generationOption);
+      /*Porcentaje de desercion de estudiantes*/
+      var desert = document.getElementById('desert-percentage');
+      desert.textContent = convertApercentage(numDesert(sede, generationOption, totalStudents(sede, generationOption)), totalStudents(sede, generationOption));
+      /*Numero de alumnas que alcanzaron la meta por sprint*/
+
+    }
+  };
 };
